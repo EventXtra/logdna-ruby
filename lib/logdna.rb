@@ -14,10 +14,17 @@ module LogDNA
     5 => 'UNKNOWN'
   }.freeze
 
-  def add(severity, message = nil, progname = nil)
+  def add(severity, message = nil, progname = nil, &block)
     super
     return true if severity < @level
-    message ||= yield
+    if message.nil?
+      if block_given?
+        message = yield
+      else
+        message = progname
+        progname = nil
+      end
+    end
     push_to_buffer(message, severity, progname) if @open
   end
 
@@ -65,7 +72,8 @@ module LogDNA
     res.flush
   end
 
-  def push_to_buffer(message, level = nil, source = 'none')
+  def push_to_buffer(message, level = nil, source = nil)
+    source ||= 'none'
     line = { line: message, app: source, timestamp: Time.now.to_i }
     line[:level] = LEVELS[level] if level
     start_timer if @buffer.empty?
